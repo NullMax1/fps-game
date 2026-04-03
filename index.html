@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>BloodArena FPS</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <!-- Three.js CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+
+  <!-- ═══════════════════════════════════════ -->
+  <!--           PANTALLA DE INICIO           -->
+  <!-- ═══════════════════════════════════════ -->
+  <div id="start-screen">
+    <div class="start-content">
+      <div class="logo-container">
+        <h1 class="game-title">BLOOD<span>ARENA</span></h1>
+        <p class="game-subtitle">FIRST PERSON SHOOTER</p>
+      </div>
+      <div class="menu-buttons">
+        <button id="btn-start" class="menu-btn primary">▶ JUGAR</button>
+        <button id="btn-fullscreen" class="menu-btn secondary">⛶ PANTALLA COMPLETA</button>
+      </div>
+      <div class="controls-hint">
+        <p>📱 Controles táctiles incluidos</p>
+      </div>
+    </div>
+    <div class="start-bg-effects">
+      <div class="particle" style="--x:10%;--y:20%;--d:3s"></div>
+      <div class="particle" style="--x:80%;--y:60%;--d:2s"></div>
+      <div class="particle" style="--x:50%;--y:80%;--d:4s"></div>
+      <div class="particle" style="--x:25%;--y:45%;--d:2.5s"></div>
+      <div class="particle" style="--x:70%;--y:15%;--d:3.5s"></div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════ -->
+  <!--           PANTALLA DE JUEGO            -->
+  <!-- ═══════════════════════════════════════ -->
+  <div id="game-screen" class="hidden">
+
+    <!-- Canvas principal de Three.js -->
+    <canvas id="game-canvas"></canvas>
+
+    <!-- ───── HUD - Interfaz del juego ───── -->
+    <div id="hud">
+
+      <!-- Crosshair (mira) -->
+      <div id="crosshair">
+        <div class="ch-line ch-top"></div>
+        <div class="ch-line ch-bottom"></div>
+        <div class="ch-line ch-left"></div>
+        <div class="ch-line ch-right"></div>
+        <div class="ch-dot"></div>
+      </div>
+
+      <!-- Barra de vida (arriba izquierda) -->
+      <div id="health-hud">
+        <div class="hud-label">❤ VIDA</div>
+        <div class="health-bar-bg">
+          <div id="health-bar" class="health-bar-fill"></div>
+        </div>
+        <span id="health-text">100</span>
+      </div>
+
+      <!-- Munición (abajo derecha) -->
+      <div id="ammo-hud">
+        <div class="ammo-current"><span id="ammo-current">30</span></div>
+        <div class="ammo-sep">/</div>
+        <div class="ammo-reserve"><span id="ammo-reserve">90</span></div>
+        <div class="ammo-label">AK-47</div>
+      </div>
+
+      <!-- Puntuación (arriba derecha) -->
+      <div id="score-hud">
+        <div class="hud-label">KILLS</div>
+        <div id="score-text">0</div>
+      </div>
+
+      <!-- Indicador de recarga -->
+      <div id="reload-indicator" class="hidden">RECARGANDO...</div>
+
+      <!-- Indicador de daño (flash rojo) -->
+      <div id="damage-flash"></div>
+
+      <!-- Indicador de muerte -->
+      <div id="hit-marker" class="hidden">✕</div>
+
+    </div>
+
+    <!-- ───── CONTROLES MÓVILES ───── -->
+    <div id="mobile-controls">
+
+      <!-- Joystick izquierdo - Movimiento -->
+      <div id="joystick-left-zone" class="joystick-zone left-zone">
+        <div id="joystick-left-base" class="joystick-base">
+          <div id="joystick-left-knob" class="joystick-knob"></div>
+        </div>
+      </div>
+
+      <!-- Joystick derecho - Mirar (Look) -->
+      <div id="joystick-right-zone" class="joystick-zone right-zone">
+        <div id="joystick-right-base" class="joystick-base">
+          <div id="joystick-right-knob" class="joystick-knob"></div>
+        </div>
+      </div>
+
+      <!-- Botones de acción -->
+      <div id="action-buttons">
+        <button id="btn-jump" class="action-btn jump-btn">↑<br><small>SALTAR</small></button>
+        <button id="btn-shoot" class="action-btn shoot-btn">🔫<br><small>DISPARAR</small></button>
+        <button id="btn-reload" class="action-btn reload-btn">↺<br><small>RECARGAR</small></button>
+        <button id="btn-sprint" class="action-btn sprint-btn">⚡<br><small>SPRINT</small></button>
+      </div>
+
+    </div>
+
+    <!-- Instrucciones PC (se oculta en móvil) -->
+    <div id="pc-instructions">
+      WASD: Mover | MOUSE: Mirar | CLICK: Disparar | R: Recargar | SPACE: Saltar | SHIFT: Sprint
+    </div>
+
+  </div>
+
+  <!-- ═══════════════════════════════════════ -->
+  <!--         PANTALLA DE GAME OVER          -->
+  <!-- ═══════════════════════════════════════ -->
+  <div id="gameover-screen" class="hidden">
+    <div class="gameover-content">
+      <h2>💀 GAME OVER</h2>
+      <p>Puntuación final: <span id="final-score">0</span></p>
+      <button id="btn-restart" class="menu-btn primary">🔄 REINTENTAR</button>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════ -->
+  <!--              SCRIPTS JS                -->
+  <!-- Orden importante: primero utilidades,  -->
+  <!-- luego sistemas, luego game principal   -->
+  <!-- ═══════════════════════════════════════ -->
+  <script src="js/controls.js"></script>
+  <script src="js/textures.js"></script>
+  <script src="js/player.js"></script>
+  <script src="js/weapon.js"></script>
+  <script src="js/enemy.js"></script>
+  <script src="js/map.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/game.js"></script>
+
+</body>
+</html>
