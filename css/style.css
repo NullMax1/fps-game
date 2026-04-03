@@ -1,0 +1,542 @@
+/* ═══════════════════════════════════════════════════════
+   BloodArena FPS - Estilos Principales
+   Archivo: css/style.css
+   ═══════════════════════════════════════════════════════ */
+
+/* ── RESET Y BASE ── */
+*, *::before, *::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+:root {
+  --red:     #e63946;
+  --red-dark:#9b1b1b;
+  --orange:  #f4a261;
+  --yellow:  #ffd166;
+  --green:   #06d6a0;
+  --bg-dark: #0a0a0f;
+  --bg-mid:  #12121a;
+  --text:    #e8e8f0;
+  --hud-bg:  rgba(0,0,0,0.55);
+  --hud-border: rgba(255,80,80,0.3);
+  --font-hud: 'Courier New', monospace;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg-dark);
+  font-family: var(--font-hud);
+  color: var(--text);
+  touch-action: none;
+}
+
+.hidden { display: none !important; }
+
+/* ═══════════════════════════════════════════════════════
+   PANTALLA DE INICIO
+   ═══════════════════════════════════════════════════════ */
+#start-screen {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(ellipse at center, #1a0808 0%, #0a0a0f 70%);
+  z-index: 100;
+  overflow: hidden;
+}
+
+.start-content {
+  position: relative;
+  z-index: 2;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2rem;
+}
+
+.logo-container { margin-bottom: 1rem; }
+
+.game-title {
+  font-size: clamp(3rem, 12vw, 7rem);
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  color: #fff;
+  text-shadow:
+    0 0 20px var(--red),
+    0 0 60px rgba(230,57,70,0.4);
+  line-height: 1;
+}
+
+.game-title span {
+  color: var(--red);
+  display: block;
+}
+
+.game-subtitle {
+  font-size: clamp(0.7rem, 2.5vw, 1rem);
+  letter-spacing: 0.5em;
+  color: rgba(255,255,255,0.4);
+  margin-top: 0.5rem;
+  text-transform: uppercase;
+}
+
+.menu-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  width: 100%;
+  max-width: 320px;
+}
+
+.menu-btn {
+  padding: 1rem 2rem;
+  border: none;
+  border-radius: 4px;
+  font-family: var(--font-hud);
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-transform: uppercase;
+}
+
+.menu-btn.primary {
+  background: var(--red);
+  color: #fff;
+  box-shadow: 0 0 30px rgba(230,57,70,0.5);
+}
+
+.menu-btn.primary:hover, .menu-btn.primary:active {
+  background: #ff4d5e;
+  transform: scale(1.03);
+  box-shadow: 0 0 50px rgba(230,57,70,0.8);
+}
+
+.menu-btn.secondary {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid rgba(255,255,255,0.2);
+}
+
+.menu-btn.secondary:hover, .menu-btn.secondary:active {
+  border-color: var(--red);
+  color: var(--red);
+}
+
+.controls-hint {
+  color: rgba(255,255,255,0.3);
+  font-size: 0.8rem;
+}
+
+/* Partículas decorativas */
+.start-bg-effects { position: absolute; inset: 0; pointer-events: none; }
+
+.particle {
+  position: absolute;
+  left: var(--x);
+  top: var(--y);
+  width: 3px;
+  height: 3px;
+  background: var(--red);
+  border-radius: 50%;
+  box-shadow: 0 0 10px var(--red);
+  animation: float var(--d) ease-in-out infinite alternate;
+}
+
+@keyframes float {
+  from { transform: translateY(0) scale(1); opacity: 0.6; }
+  to   { transform: translateY(-30px) scale(1.5); opacity: 0.2; }
+}
+
+/* ═══════════════════════════════════════════════════════
+   PANTALLA DE JUEGO - CANVAS
+   ═══════════════════════════════════════════════════════ */
+#game-screen {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+#game-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100% !important;
+  height: 100% !important;
+  display: block;
+}
+
+/* ═══════════════════════════════════════════════════════
+   HUD - INTERFAZ EN JUEGO
+   ═══════════════════════════════════════════════════════ */
+#hud {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* ── CROSSHAIR ── */
+#crosshair {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 24px;
+  height: 24px;
+}
+
+.ch-line {
+  position: absolute;
+  background: rgba(255,255,255,0.9);
+  border-radius: 1px;
+}
+
+.ch-top, .ch-bottom { width: 2px; height: 8px; left: 50%; transform: translateX(-50%); }
+.ch-left, .ch-right { width: 8px; height: 2px; top: 50%; transform: translateY(-50%); }
+.ch-top    { top: 0; }
+.ch-bottom { bottom: 0; }
+.ch-left   { left: 0; }
+.ch-right  { right: 0; }
+.ch-dot    { position: absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:3px; height:3px; background:#fff; border-radius:50%; }
+
+/* ── BARRA DE VIDA ── */
+#health-hud {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  background: var(--hud-bg);
+  border: 1px solid var(--hud-border);
+  border-radius: 6px;
+  padding: 8px 12px;
+  min-width: 160px;
+  backdrop-filter: blur(4px);
+}
+
+.hud-label {
+  font-size: 0.6rem;
+  letter-spacing: 0.2em;
+  color: rgba(255,255,255,0.5);
+  margin-bottom: 4px;
+}
+
+.health-bar-bg {
+  height: 8px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 4px;
+}
+
+.health-bar-fill {
+  height: 100%;
+  width: 100%;
+  background: linear-gradient(90deg, var(--red), #ff6b7a);
+  border-radius: 4px;
+  transition: width 0.3s ease, background 0.3s ease;
+}
+
+#health-text {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #fff;
+}
+
+/* ── MUNICIÓN ── */
+#ammo-hud {
+  position: absolute;
+  bottom: 100px;
+  right: 20px;
+  background: var(--hud-bg);
+  border: 1px solid var(--hud-border);
+  border-radius: 6px;
+  padding: 10px 14px;
+  text-align: right;
+  backdrop-filter: blur(4px);
+}
+
+.ammo-current { font-size: 2.2rem; font-weight: 900; color: #fff; line-height: 1; }
+.ammo-sep     { font-size: 1rem; color: rgba(255,255,255,0.3); }
+.ammo-reserve { font-size: 1rem; color: rgba(255,255,255,0.5); }
+.ammo-label   { font-size: 0.65rem; letter-spacing: 0.15em; color: var(--red); margin-top: 4px; }
+
+/* ── PUNTUACIÓN ── */
+#score-hud {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: var(--hud-bg);
+  border: 1px solid var(--hud-border);
+  border-radius: 6px;
+  padding: 8px 14px;
+  text-align: center;
+  backdrop-filter: blur(4px);
+}
+
+#score-text {
+  font-size: 1.8rem;
+  font-weight: 900;
+  color: var(--yellow);
+}
+
+/* ── INDICADOR RECARGA ── */
+#reload-indicator {
+  position: absolute;
+  bottom: 160px;
+  right: 20px;
+  background: rgba(0,0,0,0.7);
+  color: var(--yellow);
+  padding: 6px 12px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  letter-spacing: 0.2em;
+  animation: pulse 0.5s ease infinite alternate;
+}
+
+@keyframes pulse { from { opacity: 0.5; } to { opacity: 1; } }
+
+/* ── FLASH DE DAÑO ── */
+#damage-flash {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, transparent 40%, rgba(200,0,0,0.5) 100%);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.1s ease;
+}
+
+#damage-flash.active { opacity: 1; }
+
+/* ── HIT MARKER ── */
+#hit-marker {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 1.5rem;
+  color: var(--red);
+  font-weight: 900;
+  pointer-events: none;
+  animation: hitAnim 0.3s ease forwards;
+}
+
+@keyframes hitAnim {
+  0%   { opacity: 1; transform: translate(-50%,-50%) scale(1.5); }
+  100% { opacity: 0; transform: translate(-50%,-50%) scale(1); }
+}
+
+/* ── INSTRUCCIONES PC ── */
+#pc-instructions {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.65rem;
+  color: rgba(255,255,255,0.25);
+  letter-spacing: 0.08em;
+  text-align: center;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+/* ═══════════════════════════════════════════════════════
+   CONTROLES MÓVILES (JOYSTICKS + BOTONES)
+   ═══════════════════════════════════════════════════════ */
+#mobile-controls {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 20;
+}
+
+/* ── JOYSTICK ZONES ── */
+.joystick-zone {
+  position: absolute;
+  bottom: 0;
+  width: 45%;
+  height: 55%;
+  pointer-events: all;
+}
+
+.left-zone  { left: 0; }
+.right-zone { right: 0; }
+
+.joystick-base {
+  position: absolute;
+  bottom: 30px;
+  width: 110px;
+  height: 110px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.06);
+  border: 2px solid rgba(255,255,255,0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.left-zone  .joystick-base { left: 20px; }
+.right-zone .joystick-base { right: 20px; }
+
+.joystick-zone.active .joystick-base { opacity: 1; }
+
+.joystick-knob {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.25);
+  border: 2px solid rgba(255,255,255,0.5);
+  pointer-events: none;
+  transition: transform 0.05s ease;
+  box-shadow: 0 0 15px rgba(255,255,255,0.1);
+}
+
+/* ── BOTONES DE ACCIÓN ── */
+#action-buttons {
+  position: absolute;
+  bottom: 30px;
+  right: 50%;
+  transform: translateX(50%);
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+  pointer-events: all;
+}
+
+.action-btn {
+  border: none;
+  border-radius: 50%;
+  font-family: var(--font-hud);
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  line-height: 1.2;
+  transition: transform 0.1s, opacity 0.1s;
+  -webkit-user-select: none;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+}
+
+.action-btn:active { transform: scale(0.9); opacity: 0.8; }
+
+.action-btn small {
+  font-size: 0.5rem;
+  letter-spacing: 0.05em;
+  opacity: 0.7;
+  margin-top: 2px;
+}
+
+/* Disparar - más grande, rojo */
+.shoot-btn {
+  width: 72px;
+  height: 72px;
+  font-size: 1.4rem;
+  background: radial-gradient(circle, #e63946, #9b1b1b);
+  color: #fff;
+  border: 2px solid rgba(255,100,100,0.4);
+  box-shadow: 0 0 20px rgba(230,57,70,0.5), 0 4px 15px rgba(0,0,0,0.5);
+}
+
+.jump-btn {
+  width: 58px;
+  height: 58px;
+  font-size: 1.1rem;
+  background: rgba(60,80,120,0.85);
+  color: #aad4ff;
+  border: 2px solid rgba(100,150,255,0.3);
+}
+
+.reload-btn {
+  width: 58px;
+  height: 58px;
+  font-size: 1.2rem;
+  background: rgba(80,70,20,0.85);
+  color: var(--yellow);
+  border: 2px solid rgba(255,210,50,0.3);
+}
+
+.sprint-btn {
+  width: 52px;
+  height: 52px;
+  font-size: 1rem;
+  background: rgba(20,80,40,0.85);
+  color: var(--green);
+  border: 2px solid rgba(6,214,160,0.3);
+}
+
+/* Ocultar controles móviles en desktop (al hacer pointer lock) */
+.pointer-locked #mobile-controls { display: none; }
+.pointer-locked #pc-instructions { display: block; }
+
+/* En dispositivos que no soportan hover (táctil): siempre mostrar botones */
+@media (hover: none) {
+  #pc-instructions { display: none !important; }
+}
+
+/* ═══════════════════════════════════════════════════════
+   PANTALLA DE GAME OVER
+   ═══════════════════════════════════════════════════════ */
+#gameover-screen {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+}
+
+.gameover-content {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.gameover-content h2 {
+  font-size: clamp(2.5rem, 10vw, 5rem);
+  color: var(--red);
+  text-shadow: 0 0 30px var(--red);
+  animation: shake 0.5s ease;
+}
+
+@keyframes shake {
+  0%,100% { transform: translateX(0); }
+  25%      { transform: translateX(-10px); }
+  75%      { transform: translateX(10px); }
+}
+
+.gameover-content p {
+  font-size: 1.2rem;
+  color: rgba(255,255,255,0.7);
+}
+
+/* ═══════════════════════════════════════════════════════
+   RESPONSIVE - Ajustes para pantallas pequeñas
+   ═══════════════════════════════════════════════════════ */
+@media (max-width: 480px) {
+  .shoot-btn  { width: 64px; height: 64px; font-size: 1.2rem; }
+  .jump-btn   { width: 52px; height: 52px; }
+  .reload-btn { width: 52px; height: 52px; }
+  .sprint-btn { width: 46px; height: 46px; }
+  #action-buttons { gap: 8px; }
+  .joystick-base { width: 95px; height: 95px; }
+}
+
+@media (min-height: 700px) {
+  #action-buttons { bottom: 50px; }
+  .joystick-base  { bottom: 50px; }
+}
