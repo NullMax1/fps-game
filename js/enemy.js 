@@ -1,0 +1,395 @@
+/**
+ * ═══════════════════════════════════════════════════════
+ * enemy.js - Sistema de Enemigos
+ *
+ * IA básica con estados:
+ *   IDLE    → Patrullando / esperando
+ *   CHASE   → Persiguiendo al jugador
+ *   ATTACK  → Atacando al jugador (en rango)
+ *   DEAD    → Muerto (en proceso de desaparecer)
+ *
+ * Cada enemigo es un objeto 3D simple (cápsula/caja)
+ * con textura de camuflaje.
+ * ═══════════════════════════════════════════════════════
+ */
+
+const EnemyManager = (() => {
+
+  // ── Constantes de IA ──
+  const DETECT_RANGE  = 18;  // distancia para detectar al jugador
+  const ATTACK_RANGE  = 2.5; // distancia para atacar
+  const MOVE_SPEED    = 4.5;
+  const ATTACK_DAMAGE = 10;  // daño por golpe
+  const ATTACK_RATE   = 1.2; // segundos entre ataques
+  const ENEMY_HEALTH  = 80;
+  const PATROL_SPEED  = 2;
+
+  // ── Estado global ──
+  let scene      = null;
+  let enemies    = [];       // lista de instancias de enemigo
+  let spawnTimer = 0;
+  let spawnInterval = 6;    // segundos entre spawns
+  let maxEnemies    = 8;     // máximo simultáneo
+  let killCount     = 0;
+
+  // Puntos de spawn
+  const SPAWN_POINTS = [
+    { x:  18, z:  18 },
+    { x: -18, z:  18 },
+    { x:  18, z: -18 },
+    { x: -18, z: -18 },
+    { x:   0, z:  22 },
+    { x:   0, z: -22 },
+    { x:  22, z:   0 },
+    { x: -22, z:   0 },
+  ];
+
+  // ────────────────────────────────────────────────
+  // CLASE ENEMIGO
+  // ────────────────────────────────────────────────
+  class Enemy {
+    constructor(x, z) {
+      this.health     = ENEMY_HEALTH;
+      this.maxHealth  = ENEMY_HEALTH;
+      this.state      = 'IDLE';  // IDLE | CHASE | ATTACK | DEAD
+      this.attackTimer = 0;
+      this.patrolTimer = 0;
+      this.patrolDir   = { x: 1, z: 0 };
+      this.patrolTime  = 2 + Math.random() * 3;
+      this.isAlive     = true;
+      this.deathTimer  = 0;
+
+      // Crear modelo 3D
+      this.mesh = this._buildMesh();
+      this.mesh.position.set(x, 0, z);
+      scene.add(this.mesh);
+
+      // Barra de vida sobre el enemigo
+      this._buildHealthBar();
+    }
+
+    _buildMesh() {
+      const group = new THREE.Group();
+      const skinTex = TextureGen.enemy();
+      const mat = new THREE.MeshStandardMaterial({
+        map:       skinTex,
+        roughness: 0.8,
+      });
+
+      // Cuerpo (torso)
+      const torsoGeo = new THREE.BoxGeometry(0.6, 0.8, 0.35);
+      const torso    = new THREE.Mesh(torsoGeo, mat);
+      torso.position.y = 0.95;
+      torso.castShadow = true;
+      group.add(torso);
+
+      // Cabeza
+      const headGeo  = new THREE.BoxGeometry(0.4, 0.4, 0.4);
+      const headMat  = new THREE.MeshStandardMaterial({ color: 0xc47a55, roughness: 0.7 });
+      const head     = new THREE.Mesh(headGeo, headMat);
+      head.position.y = 1.55;
+      head.castShadow = true;
+      group.add(head);
+
+      // Piernas
+      const legGeo = new THREE.BoxGeometry(0.22, 0.7, 0.22);
+      const legL = new THREE.Mesh(legGeo, mat);
+      const legR = new THREE.Mesh(legGeo, mat);
+      legL.position.set(-0.18, 0.35, 0);
+      legR.position.set( 0.18, 0.35, 0);
+      legL.castShadow = legR.castShadow = true;
+      group.add(legL, legR);
+
+      // Brazos
+      const armGeo = new THREE.BoxGeometry(0.18, 0.65, 0.18);
+      const armL = new THREE.Mesh(armGeo, mat);
+      const armR = new THREE.Mesh(armGeo, mat);
+      armL.position.set(-0.44, 0.95, 0);
+      armR.position.set( 0.44, 0.95, 0);
+      armL.castShadow = armR.castShadow = true;
+      group.add(armL, armR);
+
+      // Guardar referencias para animación
+      this._legL = legL; this._legR = legR;
+      this._armL = armL; this._armR = armR;
+      this._walkAnim = 0;
+
+      return group;
+    }
+
+    _buildHealthBar() {
+      // Barra de vida 3D (sprite plano sobre la cabeza)
+      const bgGeo = new THREE.PlaneGeometry(0.8, 0.08);
+      const bgMat = new THREE.MeshBasicMaterial({ color: 0x333333, depthTest: false });
+      this._hpBg  = new THREE.Mesh(bgGeo, bgMat);
+      this._hpBg.position.y = 2.0;
+      this._hpBg.renderOrder = 999;
+      this.mesh.add(this._hpBg);
+
+      const fillGeo = new THREE.PlaneGeometry(0.8, 0.08);
+      const fillMat = new THREE.MeshBasicMaterial({ color: 0x22cc44, depthTest: false });
+      this._hpFill  = new THREE.Mesh(fillGeo, fillMat);
+      this._hpFill.position.y = 2.0;
+      this._hpFill.position.z = 0.001;
+      this._hpFill.renderOrder = 1000;
+      this.mesh.add(this._hpFill);
+    }
+
+    _updateHealthBar() {
+      const ratio = Math.max(0, this.health / this.maxHealth);
+      this._hpFill.scale.x = ratio;
+      this._hpFill.position.x = (ratio - 1) * 0.4;
+      // Color: verde → amarillo → rojo
+      const r = Math.floor(255 * (1 - ratio));
+      const g = Math.floor(255 * ratio);
+      this._hpFill.material.color.setRGB(r / 255, g / 255, 0);
+    }
+
+    takeDamage(amount) {
+      if (!this.isAlive) return;
+      this.health -= amount;
+      this._updateHealthBar();
+      if (this.health <= 0) this.die();
+    }
+
+    die() {
+      this.isAlive = false;
+      this.state   = 'DEAD';
+      killCount++;
+      UI.updateScore(killCount);
+      console.log('[Enemy] Muerto. Total kills:', killCount);
+    }
+
+    update(delta, playerPos) {
+      if (!this.isAlive) {
+        // Animación de muerte: caer
+        this.deathTimer += delta;
+        this.mesh.rotation.z = Math.min(Math.PI / 2, this.deathTimer * 2);
+        this.mesh.position.y -= delta * 1.5;
+        // Hacer que las barras de vida desaparezcan
+        if (this._hpBg)   this._hpBg.visible   = false;
+        if (this._hpFill) this._hpFill.visible  = false;
+        return;
+      }
+
+      // Timers
+      this.attackTimer -= delta;
+      this.patrolTimer += delta;
+
+      // Distancia al jugador
+      const dx = playerPos.x - this.mesh.position.x;
+      const dz = playerPos.z - this.mesh.position.z;
+      const dist = Math.sqrt(dx * dx + dz * dz);
+
+      // ── MÁQUINA DE ESTADOS ──
+      switch (this.state) {
+        case 'IDLE':
+          this._patrol(delta);
+          if (dist < DETECT_RANGE) {
+            this.state = 'CHASE';
+          }
+          break;
+
+        case 'CHASE':
+          if (dist <= ATTACK_RANGE) {
+            this.state = 'ATTACK';
+          } else if (dist > DETECT_RANGE * 1.5) {
+            this.state = 'IDLE';
+          } else {
+            this._moveToward(playerPos, MOVE_SPEED, delta);
+            this._animateWalk(delta);
+          }
+          break;
+
+        case 'ATTACK':
+          if (dist > ATTACK_RANGE) {
+            this.state = 'CHASE';
+          } else {
+            this._facePlayer(playerPos);
+            if (this.attackTimer <= 0) {
+              this.attackTimer = ATTACK_RATE;
+              // Atacar al jugador
+              if (Player.getIsAlive()) {
+                Player.takeDamage(ATTACK_DAMAGE);
+              }
+              // Animación de golpe
+              this._animateAttack(delta);
+            }
+          }
+          break;
+      }
+
+      // La barra de vida siempre mira a la cámara (billboard)
+      if (this._hpBg) {
+        const camPos = Player.getPosition();
+        const angle  = Math.atan2(
+          camPos.x - this.mesh.position.x,
+          camPos.z - this.mesh.position.z
+        );
+        this._hpBg.rotation.y   = angle;
+        this._hpFill.rotation.y = angle;
+      }
+    }
+
+    _patrol(delta) {
+      if (this.patrolTimer > this.patrolTime) {
+        this.patrolTimer = 0;
+        this.patrolTime  = 2 + Math.random() * 3;
+        const angle = Math.random() * Math.PI * 2;
+        this.patrolDir.x = Math.cos(angle);
+        this.patrolDir.z = Math.sin(angle);
+      }
+      this.mesh.position.x += this.patrolDir.x * PATROL_SPEED * delta;
+      this.mesh.position.z += this.patrolDir.z * PATROL_SPEED * delta;
+
+      // Mantener dentro de los límites del mapa
+      this.mesh.position.x = Math.max(-35, Math.min(35, this.mesh.position.x));
+      this.mesh.position.z = Math.max(-35, Math.min(35, this.mesh.position.z));
+      this.mesh.position.y = 0;
+
+      this._animateWalk(delta);
+      this._faceDir(this.patrolDir);
+    }
+
+    _moveToward(target, speed, delta) {
+      const dx   = target.x - this.mesh.position.x;
+      const dz   = target.z - this.mesh.position.z;
+      const dist = Math.sqrt(dx * dx + dz * dz);
+      if (dist < 0.1) return;
+
+      const nx = dx / dist;
+      const nz = dz / dist;
+      this.mesh.position.x += nx * speed * delta;
+      this.mesh.position.z += nz * speed * delta;
+      this.mesh.position.y  = 0;
+      this._faceDir({ x: nx, z: nz });
+    }
+
+    _facePlayer(playerPos) {
+      const dx    = playerPos.x - this.mesh.position.x;
+      const dz    = playerPos.z - this.mesh.position.z;
+      const angle = Math.atan2(dx, dz);
+      this.mesh.rotation.y = angle;
+    }
+
+    _faceDir(dir) {
+      this.mesh.rotation.y = Math.atan2(dir.x, dir.z);
+    }
+
+    _animateWalk(delta) {
+      this._walkAnim += delta * 6;
+      const swing = Math.sin(this._walkAnim) * 0.4;
+      if (this._legL) this._legL.rotation.x =  swing;
+      if (this._legR) this._legR.rotation.x = -swing;
+      if (this._armL) this._armL.rotation.x = -swing * 0.5;
+      if (this._armR) this._armR.rotation.x =  swing * 0.5;
+    }
+
+    _animateAttack(delta) {
+      // Sacudir el brazo derecho hacia adelante
+      if (this._armR) {
+        this._armR.rotation.x = -Math.PI * 0.5;
+        setTimeout(() => {
+          if (this._armR) this._armR.rotation.x = 0;
+        }, 200);
+      }
+    }
+  }
+
+  // ────────────────────────────────────────────────
+  // SPAWN DE ENEMIGOS
+  // ────────────────────────────────────────────────
+  function spawnEnemy() {
+    const aliveCount = enemies.filter(e => e.isAlive).length;
+    if (aliveCount >= maxEnemies) return;
+
+    // Elegir punto de spawn aleatorio
+    const sp = SPAWN_POINTS[Math.floor(Math.random() * SPAWN_POINTS.length)];
+
+    // Pequeña variación aleatoria en el spawn
+    const x = sp.x + (Math.random() - 0.5) * 4;
+    const z = sp.z + (Math.random() - 0.5) * 4;
+
+    const enemy = new Enemy(x, z);
+    enemies.push(enemy);
+    console.log('[EnemyManager] Spawned. Total:', enemies.length);
+  }
+
+  // ────────────────────────────────────────────────
+  // LIMPIAR ENEMIGOS MUERTOS DE LA ESCENA
+  // ────────────────────────────────────────────────
+  function cleanDeadEnemies() {
+    enemies = enemies.filter(e => {
+      if (!e.isAlive && e.deathTimer > 2.0) {
+        // Remover de la escena
+        scene.remove(e.mesh);
+        e.mesh.traverse(child => {
+          if (child.geometry) child.geometry.dispose();
+          if (child.material) child.material.dispose();
+        });
+        return false;
+      }
+      return true;
+    });
+  }
+
+  // ────────────────────────────────────────────────
+  // UPDATE GLOBAL
+  // ────────────────────────────────────────────────
+  function update(delta) {
+    const playerPos = Player.getPosition();
+
+    // Actualizar cada enemigo
+    for (const e of enemies) {
+      e.update(delta, playerPos);
+    }
+
+    // Spawn automático
+    spawnTimer += delta;
+    if (spawnTimer >= spawnInterval) {
+      spawnTimer = 0;
+      spawnEnemy();
+    }
+
+    // Limpiar muertos cada cierto tiempo
+    cleanDeadEnemies();
+  }
+
+  // ────────────────────────────────────────────────
+  // INICIALIZACIÓN
+  // ────────────────────────────────────────────────
+  function init(threeScene) {
+    scene     = threeScene;
+    enemies   = [];
+    killCount = 0;
+    spawnTimer = 0;
+
+    // Spawn inicial de 3 enemigos
+    for (let i = 0; i < 3; i++) {
+      spawnEnemy();
+    }
+    console.log('[EnemyManager] Inicializado');
+  }
+
+  function reset() {
+    // Limpiar todos los enemigos de la escena
+    for (const e of enemies) {
+      scene.remove(e.mesh);
+    }
+    enemies = [];
+    killCount = 0;
+    spawnTimer = 0;
+  }
+
+  // API pública
+  return {
+    init,
+    update,
+    reset,
+    getEnemies:  () => enemies,
+    getKillCount: () => killCount,
+    setMaxEnemies: (n) => { maxEnemies = n; },
+    setSpawnInterval: (s) => { spawnInterval = s; },
+  };
+
+})();

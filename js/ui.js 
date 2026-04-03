@@ -1,0 +1,176 @@
+/**
+ * ═══════════════════════════════════════════════════════
+ * ui.js - Sistema de Interfaz de Usuario (HUD)
+ *
+ * Gestiona todos los elementos visuales del HUD:
+ *  - Barra y texto de vida
+ *  - Contador de munición
+ *  - Puntuación / kills
+ *  - Indicadores (daño, hit marker, recarga)
+ *  - Pantallas (inicio, game over)
+ * ═══════════════════════════════════════════════════════
+ */
+
+const UI = (() => {
+
+  // ── Referencias a elementos del DOM ──
+  let els = {};
+  let hitMarkerTimeout = null;
+  let damageTimeout    = null;
+
+  // ────────────────────────────────────────────────
+  // INICIALIZACIÓN (cachea todos los elementos DOM)
+  // ────────────────────────────────────────────────
+  function init() {
+    els = {
+      // HUD
+      healthBar:       document.getElementById('health-bar'),
+      healthText:      document.getElementById('health-text'),
+      ammoCurrentEl:   document.getElementById('ammo-current'),
+      ammoReserveEl:   document.getElementById('ammo-reserve'),
+      scoreEl:         document.getElementById('score-text'),
+      reloadIndicator: document.getElementById('reload-indicator'),
+      damageFlash:     document.getElementById('damage-flash'),
+      hitMarker:       document.getElementById('hit-marker'),
+      // Pantallas
+      startScreen:     document.getElementById('start-screen'),
+      gameScreen:      document.getElementById('game-screen'),
+      gameoverScreen:  document.getElementById('gameover-screen'),
+      finalScore:      document.getElementById('final-score'),
+      // Controles
+      pcInstructions:  document.getElementById('pc-instructions'),
+    };
+    console.log('[UI] Inicializado');
+  }
+
+  // ────────────────────────────────────────────────
+  // PANTALLAS
+  // ────────────────────────────────────────────────
+  function showStartScreen() {
+    els.startScreen?.classList.remove('hidden');
+    els.gameScreen?.classList.add('hidden');
+    els.gameoverScreen?.classList.add('hidden');
+  }
+
+  function showGameScreen() {
+    els.startScreen?.classList.add('hidden');
+    els.gameScreen?.classList.remove('hidden');
+    els.gameoverScreen?.classList.add('hidden');
+  }
+
+  function showGameOver(score) {
+    els.gameoverScreen?.classList.remove('hidden');
+    if (els.finalScore) els.finalScore.textContent = score;
+  }
+
+  // ────────────────────────────────────────────────
+  // BARRA DE VIDA
+  // ────────────────────────────────────────────────
+  function updateHealth(current, max) {
+    const pct = Math.max(0, (current / max) * 100);
+
+    if (els.healthBar) {
+      els.healthBar.style.width = pct + '%';
+
+      // Cambiar color según nivel de vida
+      if (pct > 60) {
+        els.healthBar.style.background = 'linear-gradient(90deg, #e63946, #ff6b7a)';
+      } else if (pct > 30) {
+        els.healthBar.style.background = 'linear-gradient(90deg, #f4a261, #ff6b7a)';
+      } else {
+        // Vida baja → parpadear
+        els.healthBar.style.background = 'linear-gradient(90deg, #ff0000, #aa0000)';
+        els.healthBar.style.animation  = 'pulse 0.4s infinite alternate';
+      }
+    }
+
+    if (els.healthText) {
+      els.healthText.textContent = Math.ceil(current);
+    }
+  }
+
+  // ────────────────────────────────────────────────
+  // MUNICIÓN
+  // ────────────────────────────────────────────────
+  function updateAmmo(inMag, reserve, weaponName) {
+    if (els.ammoCurrentEl) els.ammoCurrentEl.textContent = inMag;
+    if (els.ammoReserveEl) els.ammoReserveEl.textContent = reserve;
+
+    // Rojo si casi sin balas
+    if (els.ammoCurrentEl) {
+      els.ammoCurrentEl.style.color = inMag <= 5 ? '#ff4444' : '#ffffff';
+    }
+  }
+
+  // ────────────────────────────────────────────────
+  // PUNTUACIÓN
+  // ────────────────────────────────────────────────
+  function updateScore(kills) {
+    if (els.scoreEl) {
+      els.scoreEl.textContent = kills;
+      // Animación de escalar al aumentar
+      els.scoreEl.style.transform = 'scale(1.5)';
+      els.scoreEl.style.color     = '#ffd166';
+      setTimeout(() => {
+        els.scoreEl.style.transform = 'scale(1)';
+        els.scoreEl.style.color     = '#ffd166';
+      }, 300);
+    }
+  }
+
+  // ────────────────────────────────────────────────
+  // INDICADOR DE RECARGA
+  // ────────────────────────────────────────────────
+  function showReloading(show) {
+    if (els.reloadIndicator) {
+      els.reloadIndicator.classList.toggle('hidden', !show);
+    }
+  }
+
+  // ────────────────────────────────────────────────
+  // FLASH DE DAÑO (overlay rojo al recibir daño)
+  // ────────────────────────────────────────────────
+  function showDamageFlash() {
+    if (!els.damageFlash) return;
+    els.damageFlash.classList.add('active');
+    clearTimeout(damageTimeout);
+    damageTimeout = setTimeout(() => {
+      els.damageFlash.classList.remove('active');
+    }, 150);
+  }
+
+  // ────────────────────────────────────────────────
+  // HIT MARKER (✕ cuando disparas a un enemigo)
+  // ────────────────────────────────────────────────
+  function showHitMarker() {
+    if (!els.hitMarker) return;
+    clearTimeout(hitMarkerTimeout);
+
+    // Recrear el elemento para reiniciar la animación CSS
+    const hm = els.hitMarker;
+    hm.classList.remove('hidden');
+    hm.style.animation = 'none';
+    // Forzar reflow para reiniciar animación
+    void hm.offsetWidth;
+    hm.style.animation = '';
+
+    hitMarkerTimeout = setTimeout(() => {
+      hm.classList.add('hidden');
+    }, 300);
+  }
+
+  // API pública
+  return {
+    init,
+    showStartScreen,
+    showGameScreen,
+    showGameOver,
+    updateHealth,
+    updateAmmo,
+    updateScore,
+    showReloading,
+    showDamageFlash,
+    showHitMarker,
+  };
+
+})();
